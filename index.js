@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, But
 const TOKEN         = process.env.BOT_TOKEN;
 const GUILD_ID      = '1441175529872162868';
 const WELCOME_CH    = '1479067270905987158';
-const TICKETS_CH    = '1478808715132928051';
+const TICKETS_CAT   = '1479077416663253062';
 const VERIFIED_ROLE = '1441181835769020466';
 const CEO_ROLE      = '1441180829291253791';
 const COCEO_ROLE    = '1442928560753872987';
