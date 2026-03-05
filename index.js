@@ -52,7 +52,7 @@ client.on('guildMemberAdd', async member => {
   const embed = new EmbedBuilder()
     .setColor(0xc0392b)
     .setTitle('🔫 Bienvenue chez Grinta Gun Shop !')
-    .setDescription(`Bienvenue **${member.user.username}** !\n\nTu peux te connecter sur notre site et créer ton compte en cliquant sur **Connexion** avec Discord.\n\n🌐 **grinta-gun-shop.web.app**`)
+    .setDescription(`Bienvenue **${member.user.username}** !\n\nTu peux te connecter sur notre site et créer ton compte en cliquant sur **Connexion** avec Discord.\n\n🌐 **[grinta-gun-shop.web.app](https://grinta-gun-shop.web.app)**`)
     .setThumbnail(member.user.displayAvatarURL())
     .setFooter({ text: 'Grinta Gun Shop · Armurerie Professionnelle' })
     .setTimestamp();
