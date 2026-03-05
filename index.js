@@ -150,7 +150,7 @@ client.on('interactionCreate', async interaction => {
     const ticketChannel = await guild.channels.create({
       name: `ticket-${user.username.toLowerCase()}`,
       type: ChannelType.GuildText,
-      parent: interaction.channel.parentId,
+      parent: TICKETS_CAT,
       permissionOverwrites: [
         { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
         { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
@@ -173,11 +173,6 @@ client.on('interactionCreate', async interaction => {
     );
 
     await ticketChannel.send({ content: `<@${user.id}>`, embeds: [embed], components: [row] });
-
-    const notifCh = guild.channels.cache.get(TICKETS_CH);
-    if (notifCh) {
-      await notifCh.send(`🎫 Nouveau ticket ouvert par <@${user.id}> : <#${ticketChannel.id}>`);
-    }
 
     await interaction.reply({ content: `✅ Ticket créé : <#${ticketChannel.id}>`, ephemeral: true });
   }
