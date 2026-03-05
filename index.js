@@ -4,8 +4,9 @@ const TOKEN         = process.env.BOT_TOKEN;
 const GUILD_ID      = '1441175529872162868';
 const WELCOME_CH    = '1479067270905987158';
 const TICKETS_CH    = '1478808715132928051';
-const REGLEMENT_CH  = '1441181835769020466'; // salon où poster le règlement
-const VERIFIED_ROLE = '1441181835769020466'; // rôle donné après acceptation
+const VERIFIED_ROLE = '1441181835769020466';
+const CEO_ROLE      = '1441180829291253791';
+const COCEO_ROLE    = '1442928560753872987';
 
 const client = new Client({
   intents: [
@@ -23,12 +24,11 @@ const client = new Client({
 client.once('ready', async () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
 
-  // Enregistrer les slash commands
   const guild = await client.guilds.fetch(GUILD_ID);
   await guild.commands.set([
     {
-      name: 'ticket',
-      description: '🎫 Ouvrir un ticket support',
+      name: 'ticket-panel',
+      description: '🎫 Poster le panel de tickets dans ce salon (CEO uniquement)',
     },
     {
       name: 'reglement',
@@ -65,8 +65,45 @@ client.on('guildMemberAdd', async member => {
 // ══════════════════════════════════════
 client.on('interactionCreate', async interaction => {
 
-  // ── /reglement
+  // ── Vérif CEO/Co-CEO
+  const isCEO = interaction.member?.roles?.cache?.has(CEO_ROLE) || interaction.member?.roles?.cache?.has(COCEO_ROLE);
+
+  // ── /ticket-panel (CEO uniquement)
+  if (interaction.isChatInputCommand() && interaction.commandName === 'ticket-panel') {
+    if (!isCEO) {
+      return interaction.reply({ content: '❌ Seuls les CEO et Co-CEO peuvent utiliser cette commande.', ephemeral: true });
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0xc0392b)
+      .setTitle('🎫 Support — Grinta Gun Shop')
+      .setDescription(
+        '**Besoin d\'aide ? Ouvre un ticket !**\n\n' +
+        '📦 Commande / Livraison\n' +
+        '🔧 Problème technique\n' +
+        '💬 Question générale\n' +
+        '⚠️ Signalement\n\n' +
+        '*Clique sur le bouton ci-dessous pour créer un ticket privé avec notre équipe.*'
+      )
+      .setFooter({ text: 'Grinta Gun Shop · Support' })
+      .setTimestamp();
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('open_ticket')
+        .setLabel('📩 Ouvrir un ticket')
+        .setStyle(ButtonStyle.Primary)
+    );
+
+    await interaction.reply({ embeds: [embed], components: [row] });
+  }
+
+  // ── /reglement (CEO uniquement)
   if (interaction.isChatInputCommand() && interaction.commandName === 'reglement') {
+    if (!isCEO) {
+      return interaction.reply({ content: '❌ Seuls les CEO et Co-CEO peuvent utiliser cette commande.', ephemeral: true });
+    }
+
     const embed = new EmbedBuilder()
       .setColor(0xc0392b)
       .setTitle('📋 Règlement — Grinta Gun Shop')
@@ -91,18 +128,25 @@ client.on('interactionCreate', async interaction => {
     await interaction.reply({ embeds: [embed], components: [row] });
   }
 
-  // ── /ticket
-  if (interaction.isChatInputCommand() && interaction.commandName === 'ticket') {
+  // ── /fermer
+  if (interaction.isChatInputCommand() && interaction.commandName === 'fermer') {
+    if (!interaction.channel.name.startsWith('ticket-')) {
+      return interaction.reply({ content: '❌ Cette commande ne fonctionne que dans un ticket.', ephemeral: true });
+    }
+    await interaction.reply('🔒 Fermeture du ticket dans 5 secondes...');
+    setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
+  }
+
+  // ── Bouton : ouvrir ticket
+  if (interaction.isButton() && interaction.customId === 'open_ticket') {
     const guild = interaction.guild;
     const user = interaction.user;
 
-    // Vérifier si un ticket existe déjà
     const existing = guild.channels.cache.find(c => c.name === `ticket-${user.username.toLowerCase()}`);
     if (existing) {
       return interaction.reply({ content: `❌ Tu as déjà un ticket ouvert : <#${existing.id}>`, ephemeral: true });
     }
 
-    // Créer le salon ticket
     const ticketChannel = await guild.channels.create({
       name: `ticket-${user.username.toLowerCase()}`,
       type: ChannelType.GuildText,
@@ -110,13 +154,15 @@ client.on('interactionCreate', async interaction => {
       permissionOverwrites: [
         { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
         { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+        { id: CEO_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+        { id: COCEO_ROLE, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
       ],
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x5865F2)
+      .setColor(0xc0392b)
       .setTitle(`🎫 Ticket — ${user.username}`)
-      .setDescription(`Bonjour <@${user.id}> !\n\nDécris ton problème ci-dessous, le staff te répondra dès que possible.\n\nUtilise **/fermer** pour fermer ce ticket.`)
+      .setDescription(`Bonjour <@${user.id}> !\n\nDécris ton problème ci-dessous, le staff te répondra dès que possible.\n\nUtilise le bouton ci-dessous pour fermer ce ticket.`)
       .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
@@ -128,22 +174,12 @@ client.on('interactionCreate', async interaction => {
 
     await ticketChannel.send({ content: `<@${user.id}>`, embeds: [embed], components: [row] });
 
-    // Notifier dans le salon tickets
     const notifCh = guild.channels.cache.get(TICKETS_CH);
     if (notifCh) {
       await notifCh.send(`🎫 Nouveau ticket ouvert par <@${user.id}> : <#${ticketChannel.id}>`);
     }
 
     await interaction.reply({ content: `✅ Ticket créé : <#${ticketChannel.id}>`, ephemeral: true });
-  }
-
-  // ── /fermer
-  if (interaction.isChatInputCommand() && interaction.commandName === 'fermer') {
-    if (!interaction.channel.name.startsWith('ticket-')) {
-      return interaction.reply({ content: '❌ Cette commande ne fonctionne que dans un ticket.', ephemeral: true });
-    }
-    await interaction.reply('🔒 Fermeture du ticket dans 5 secondes...');
-    setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
   }
 
   // ── Bouton : accepter règlement
